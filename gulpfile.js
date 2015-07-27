@@ -41,6 +41,7 @@ gulp.task('vendor',function(){
 });
 
 //combine all 3rd party dependencies for faster performance
+//For performance reasons, NPM modules specified in the dependencies array are compiled and bundled separately. As a result, bundle.js recompiles a few hundred milliseconds faster.
 
 gulp.task('browserify-vendor', function(){
 	return browserify()
