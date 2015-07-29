@@ -1,12 +1,24 @@
+
+//Core node modules
 var express = require ('express');
 var path = require('path');
 var logger = require('morgan');
 var bodyParser = require('body-parser');
 
+//3rd party npm libraries
 var swig = require('swig'):
 var React = require('react');
 var Router = require('react-router');
 var routes = require('./app/routes');
+
+var mongoose = require('mongoose');
+var Character = require('./models/character');
+var config = require('./config');
+
+mongoose.connect(config.database);
+mongoose.connection.on('error', function(){
+	console.info("Error, could not connect ot MongoDB. Run mongod please.");
+})
 
 var app = express();
 
