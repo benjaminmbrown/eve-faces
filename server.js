@@ -12,6 +12,7 @@ var Router = require('react-router');
 var routes = require('./app/routes');
 var async = require('async');
 var request = require('request');
+var _ = require('underscore');
 
 var mongoose = require('mongoose');
 var Character = require('./models/character');
@@ -105,6 +106,115 @@ app.post('/api/characters', function(req,res,next){
 
 		]);
 });
+
+
+
+//API routes
+
+//returns two random  characters in the home component
+app.get('/api/characters', function(req,res,next){
+	var choices = ['Female', 'Male'];
+	var randomGender = _.sample(choices);
+
+	Character.find({random: {$near:[Math.random(),0]}})
+	.where('voted', false)
+	.where('gender', randomGender)
+	.limit(2)
+	.exec(function(err,characters){
+		if(err) return next(err);
+
+		if(characters.length === 2){
+			return res.send(characters);
+		}
+
+		var oppositeGender = _.first(_.without(choices, randomGender));
+
+		Character
+		.find({random: {$near: [Math.random(),0]}})
+		.where('voted', false)
+		.where('gender', oppositeGender)
+		.limit(2)
+		.exec(function(err,characters){
+			if(err) return next(err);
+
+			if(characters.length === 2){
+				return res.send(characters);
+			}
+
+			Character.update({}, {$set:{voted:false]}}, {multi:true}, function(err){
+				if(err) return next(err);
+				res.send([]);
+			}
+		});
+		});
+	});
+
+//Update winning and losing count for both chars
+
+app.put('/api/characters', function(req,res,next){
+	var winner = req.body.winner;
+	var loser = req.body.loser;
+	
+	if(!winner || !loser){
+		return res.status(400).send({message:'voting requires two characters'});
+	}
+
+	if(winner === loser){
+		return res.status(400).send({message:"can not vote for same char!"});
+	}
+
+	async.parallel([
+		function(callback) {
+			Character.findOne({ characterId: winner }, function(err, winner) {
+				callback(err, winner);
+			});
+		},
+		function(callback) {
+			Character.findOne({ characterId: loser }, function(err, loser) {
+				callback(err, loser);
+			});
+		}
+		],
+
+		function(err, results) {
+			if (err) return next(err);
+
+			var winner = results[0];
+			var loser = results[1];
+
+			if (!winner || !loser) {
+				return res.status(404).send({ message: 'One of the characters no longer exists.' });
+			}
+
+			if (winner.voted || loser.voted) {
+				return res.status(200).end();
+			}
+
+			async.parallel([
+				function(callback) {
+					winner.wins++;
+					winner.voted = true;
+					winner.random = [Math.random(), 0];
+					winner.save(function(err) {
+						callback(err);
+					});
+				},
+				function(callback) {
+					loser.losses++;
+					loser.voted = true;
+					loser.random = [Math.random(), 0];
+					loser.save(function(err) {
+						callback(err);
+					});
+				}
+				], function(err) {
+					if (err) return next(err);
+					res.status(200).end();
+				});
+		});
+});
+
+
 
 //React middleware
 app.use(function(req,res){
