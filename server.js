@@ -44,24 +44,24 @@ app.post('/api/characters', function(req,res,next){
 			request.get(characterIdLookupUrl, function(err,request,xml){
 				
 				if(err) return next(err);
-			parser.parseString(xml,function(err,parsedXml){
+				parser.parseString(xml,function(err,parsedXml){
 
 
-				try{
-					var characterId = parsedXml.eveapi.result[0].rowset[0].row[0].$.characterID;
+					try{
+						var characterId = parsedXml.eveapi.result[0].rowset[0].row[0].$.characterID;
 
-					Character.findeOne({characterId: characterId}, function(err, character){
-						if(err) return next(err);
+						Character.findeOne({characterId: characterId}, function(err, character){
+							if(err) return next(err);
 
-						if(character){
-							return res.status(409).send({message:character.name + ' is already in the database'});
-						}
-						callback(err, characterId);
-					});
-				}catch(e){
-					return res.status(400).send({message:"XML parse error."});
-				}
-					});
+							if(character){
+								return res.status(409).send({message:character.name + ' is already in the database'});
+							}
+							callback(err, characterId);
+						});
+					}catch(e){
+						return res.status(400).send({message:"XML parse error."});
+					}
+				});
 			});
 
 		},
